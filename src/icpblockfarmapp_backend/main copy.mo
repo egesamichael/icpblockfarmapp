@@ -3,11 +3,11 @@
 
 // Proper import syntax for Motoko - all imports must be at the top of the file
 import Text "mo:base/Text";
-import Array "mo:base/Array";
-import Debug "mo:base/Debug";
+import _Array "mo:base/Array";
+import _Debug "mo:base/Debug";
 import Nat "mo:base/Nat";
-import Int "mo:base/Int";
-import Time "mo:base/Time";
+import _Int "mo:base/Int";
+import _Time "mo:base/Time";
 import Principal "mo:base/Principal";
 
 // Your actor definition should follow
@@ -36,16 +36,17 @@ actor {
   public shared func askLLM(prompt : Text, systemPrompt : Text) : async Text {
     let params : CompleteParams = {
       prompt = prompt;
-      systemPrompt = ?systemPrompt; // Updated to match the renamed field
-      max_tokens = ?512;  // Reduced for faster responses
+      systemPrompt = ?systemPrompt;
+      max_tokens = ?512;
       temperature = ?0.7;
     };
     
     try {
       let response = await llmCanister.complete(params);
       return response.completion;
-    } catch (e) {
-      return "I encountered an issue while processing your request. The LLM service might be experiencing high demand. Please try again in a few moments.";
+    } catch (err) {
+      _Debug.print("LLM Service Error: " # debug_show(err));
+      return "I'm currently unable to process your request. Please try again in a few moments. If the issue persists, contact support.";
     };
   };
 
