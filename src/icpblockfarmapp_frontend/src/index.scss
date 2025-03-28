@@ -153,9 +153,11 @@ select:focus, input:focus {
   border: 1px solid rgba(0,0,0,0.03);
 }
 
+// Update card hover styles
 .card:hover {
   transform: translateY(-3px);
   box-shadow: 0 6px 12px rgba(0,0,0,0.08);
+  background-color: #2A6B35;
 }
 
 .ai-card {
@@ -172,81 +174,43 @@ select:focus, input:focus {
   line-height: 1.6;
 }
 
+// Improve weather card text colors
 .weather-card {
   background-color: #f0f9ff;
 }
 
-.disease-card {
-  background-color: #fff9f0;
-}
-
-.market-card {
-  background-color: #f0fff4;
-}
-
-.livestock-card {
-  background-color: #f9f0ff;
-}
-
-.weather-display {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-}
-
-.weather-icon-large {
-  font-size: 2.8rem; /* Reduced from 3.5rem */
-  margin: 8px 0;
-  color: #4a90e2;
-}
-
-.weather-details {
-  flex: 1;
+.weather-details p {
+  color: #fff;
 }
 
 .current-weather {
   font-size: 1.2rem;
   font-weight: 500;
+  color: #333; // Ensure visibility
 }
 
-.price-trend {
-  display: flex;
-  align-items: center;
-  margin: 10px 0;
+// Market prices text visibility fix
+.market-card {
+  background-color: #21952b;
+}
+
+.price-item .crop-name {
   font-weight: 500;
+  color: #333; // Ensure visibility
 }
 
-.price-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 10px 0;
-  border-bottom: 1px solid #eee;
-}
-
-.price-item:last-child {
-  border-bottom: none;
-}
-
-.crop-info {
-  display: flex;
-  flex-direction: column;
-}
-
-.crop-name {
-  font-weight: 500;
-}
-
-.crop-price {
-  color: #666;
+.price-item .crop-price {
+  color: #333; // Ensure visibility
 }
 
 .price-up {
   color: #4caf50;
+  font-weight: 500; // Make more visible
 }
 
 .price-down {
   color: #f44336;
+  font-weight: 500; // Make more visible
 }
 
 .disease-alert {
@@ -320,8 +284,10 @@ select:focus, input:focus {
   font-size: 0.95rem; /* Added font size */
 }
 
+// Improve tab hover states
 .tab:hover {
-  background-color: #e9e9e9;
+  background-color: #e8f5e9; // Lighter green background
+  color: #1d4d26; // Darker green text for contrast
 }
 
 .tab.active {
@@ -412,6 +378,8 @@ select:focus, input:focus {
 .crop-item:hover {
   transform: scale(1.05);
   box-shadow: 0 6px 12px rgba(0,0,0,0.12);
+  background-color: #e8f5e9; // Light green background on hover
+  color: #1d4d26; // Darker text for better contrast
 }
 
 .crop-item.selected {
@@ -526,9 +494,15 @@ select:focus, input:focus {
   transition: transform 0.2s ease;
 }
 
+// Fix forecast day hover text colors
 .forecast-day:hover {
   transform: scale(1.05);
   background-color: rgba(255, 255, 255, 0.9);
+}
+
+.forecast-day:hover .forecast-temp,
+.forecast-day:hover .forecast-desc {
+  color: #1d4d26;
 }
 
 .forecast-date {
@@ -775,5 +749,76 @@ input:checked + .toggle-slider:before {
   .llm-response {
     background-color: rgba(139, 195, 74, 0.15);
     border-left-color: #8bc34a;
+  }
+}
+
+// Add this to your existing styles for the connection warning
+.retry-connection-btn {
+  margin-left: 10px;
+  background-color: #856404;
+  color: white;
+  border: none;
+  padding: 5px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.retry-connection-btn:hover {
+  background-color: #6d5304;
+}
+
+@media (prefers-color-scheme: dark) {
+  .retry-connection-btn {
+    background-color: #ffdb7d;
+    color: #3a3000;
+  }
+  
+  .retry-connection-btn:hover {
+    background-color: #e6c66f;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  .connection-warning {
+    background-color: #3a3000;
+    color: #ffdb7d;
+    border-color: #665200;
+  }
+}
+
+// Improve loading container
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  background-color: rgba(240, 247, 233, 0.8);
+}
+
+.loading-spinner {
+  width: 50px;
+  height: 50px;
+  border: 5px solid rgba(42, 107, 53, 0.2);
+  border-radius: 50%;
+  border-top-color: #2a6b35;
+  animation: spin 1s ease-in-out infinite;
+  margin-bottom: 20px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+// Dark mode support for loading
+@media (prefers-color-scheme: dark) {
+  .loading-container {
+    background-color: rgba(26, 36, 33, 0.8);
+  }
+  
+  .loading-spinner {
+    border-color: rgba(139, 195, 74, 0.2);
+    border-top-color: #8bc34a;
   }
 }

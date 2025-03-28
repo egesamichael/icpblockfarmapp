@@ -14,276 +14,334 @@ function App() {
   const [livestockHealth, setLivestockHealth] = useState(null);
   const [useLLM, setUseLLM] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState('checking');
+  const [backendAvailable, setBackendAvailable] = useState(false);
 
-  // Fetch data from backend when component mounts
+  // Check backend connection when component mounts
   useEffect(() => {
+    const checkBackendConnection = async () => {
+      try {
+        // Simple ping to check if backend is available
+        await icpblockfarmapp_backend.greet("connection_test");
+        setBackendAvailable(true);
+        setConnectionStatus('connected');
+      } catch (error) {
+        console.error("Backend connection error:", error);
+        setBackendAvailable(false);
+        setConnectionStatus('disconnected');
+        loadFallbackData();
+      }
+    };
+
+    // Start loading the UI immediately
+    setWeatherData({
+      current: 'Loading...',
+      tomorrow: 'Loading...',
+      wednesday: 'Loading...'
+    });
+    
+    setMarketPrices([
+      { crop: 'Corn', price: 'Loading...', trend: 'up', change: '...' },
+      { crop: 'Wheat', price: 'Loading...', trend: 'down', change: '...' },
+      { crop: 'Soybeans', price: 'Loading...', trend: 'up', change: '...' },
+      { crop: 'Rice', price: 'Loading...', trend: 'up', change: '...' }
+    ]);
+    
+    setDiseaseAlerts([
+      { 
+        crop: 'Loading...', 
+        disease: 'Loading...', 
+        risk: 'medium',
+        recommendation: 'Loading...'
+      }
+    ]);
+    
+    setLivestockHealth([
+      { animal: 'Loading...', info: 'Loading...' }
+    ]);
+
+    checkBackendConnection();
+  }, []);
+
+  // Load fallback data when backend is not available
+  const loadFallbackData = () => {
+    setWeatherData({
+      current: '24°C, Sunny',
+      tomorrow: '22°C, Partly Cloudy',
+      wednesday: '19°C, Rain'
+    });
+    
+    setMarketPrices([
+      { crop: 'Corn', price: '$5.20/bushel', trend: 'up', change: '(+2.3%)' },
+      { crop: 'Wheat', price: '$6.75/bushel', trend: 'down', change: '(-1.5%)' },
+      { crop: 'Soybeans', price: '$13.40/bushel', trend: 'up', change: '(+3.1%)' },
+      { crop: 'Rice', price: '$14.25/cwt', trend: 'up', change: '(+0.8%)' }
+    ]);
+    
+    setDiseaseAlerts([
+      { 
+        crop: 'Tomatoes', 
+        disease: 'Late Blight', 
+        risk: 'high',
+        recommendation: 'Apply fungicide immediately and monitor closely.'
+      },
+      { 
+        crop: 'Corn', 
+        disease: 'Corn Leaf Blight', 
+        risk: 'medium',
+        recommendation: 'Monitor conditions and prepare preventative measures.'
+      }
+    ]);
+    
+    setAiRecommendation("Based on current soil moisture levels, weather forecast, and crop growth stage, we recommend irrigation in the next 48 hours. Approximately 1.5 inches of water is optimal for your corn fields.");
+    
+    setLivestockHealth([
+      { animal: 'Cattle', info: 'Good condition, continue regular vaccination schedule.' },
+      { animal: 'Poultry', info: 'Attention needed, possible respiratory issues. Check ventilation in coops, monitor for symptoms.' }
+    ]);
+  };
+
+  // Fetch data from backend when component mounts and backend is available
+  useEffect(() => {
+    if (!backendAvailable) return;
+
     const fetchData = async () => {
       setIsLoading(true);
       try {
-        // Add a connection status check
-        let isConnected = false;
-        try {
-          // Simple check to see if we can reach the backend
-          if (typeof icpblockfarmapp_backend.greet === 'function') {
-            await icpblockfarmapp_backend.greet("connection_test");
-            isConnected = true;
+        // Fetch weather data using the LLM-based function
+        const weatherResponse = await icpblockfarmapp_backend.getWeatherForecast();
+        
+        // Parse the weather data - adjust this based on the actual format returned
+        // Since we're using LLM, the format might be different
+        const weatherLines = weatherResponse.split('\n');
+        let parsedWeather = {
+          current: 'Loading weather data...',
+          tomorrow: 'Loading forecast...',
+          wednesday: 'Loading forecast...'
+        };
+        
+        // Extract weather information from the LLM response
+        // This is a simple parsing approach - you might need to adjust based on actual responses
+        for (const line of weatherLines) {
+          if (line.toLowerCase().includes('today') || line.toLowerCase().includes('current')) {
+            parsedWeather.current = line;
+          } else if (line.toLowerCase().includes('tomorrow')) {
+            parsedWeather.tomorrow = line;
+          } else if (line.toLowerCase().includes('day after') || line.toLowerCase().includes('wednesday')) {
+            parsedWeather.wednesday = line;
           }
-        } catch (connectionError) {
-          console.error("Backend connection error:", connectionError);
-          setAiRecommendation("⚠️ Cannot connect to the backend canister. Please ensure the local replica is running with 'dfx start' in a terminal window.");
-          // Continue with fallback data
         }
-
-        if (!isConnected) {
-          // Load all fallback data if not connected
-          setWeatherData({
-            current: '24°C, Sunny',
-            tomorrow: '22°C, Partly Cloudy',
-            wednesday: '19°C, Rain'
-          });
-          
-          setMarketPrices([
-            { crop: 'Corn', price: '$5.20/bushel', trend: 'up', change: '(+2.3%)' },
-            { crop: 'Wheat', price: '$6.75/bushel', trend: 'down', change: '(-1.5%)' },
-            { crop: 'Soybeans', price: '$13.40/bushel', trend: 'up', change: '(+3.1%)' },
-            { crop: 'Rice', price: '$14.25/cwt', trend: 'up', change: '(+0.8%)' }
-          ]);
-          
-          setDiseaseAlerts([
-            { 
-              crop: 'Tomatoes', 
-              disease: 'Late Blight', 
-              risk: 'high',
-              recommendation: 'Apply fungicide immediately and monitor closely.'
-            },
-            { 
-              crop: 'Corn', 
-              disease: 'Corn Leaf Blight', 
-              risk: 'medium',
-              recommendation: 'Monitor conditions and prepare preventative measures.'
-            }
-          ]);
-          
-          if (!aiRecommendation) {
-            setAiRecommendation("⚠️ DEMO MODE: Backend canister not connected. Start the local replica with 'dfx start' to enable live data and AI features.\n\nBased on current soil moisture levels, weather forecast, and crop growth stage, we recommend irrigation in the next 48 hours. Approximately 1.5 inches of water is optimal for your corn fields.");
-          }
-          
-          setLivestockHealth([
-            { animal: 'Cattle', info: 'Good condition, continue regular vaccination schedule.' },
-            { animal: 'Poultry', info: 'Attention needed, possible respiratory issues. Check ventilation in coops, monitor for symptoms.' }
-          ]);
-          
-          setIsLoading(false);
-          return; // Skip the rest of the function
-        }
-
-        // Original fetch code continues here for when connection is successful
-        // Check if backend functions exist before calling them
-        // Fetch weather data
-        if (typeof icpblockfarmapp_backend.getWeatherForecast === 'function') {
-          const weatherResponse = await icpblockfarmapp_backend.getWeatherForecast();
-          const weatherLines = weatherResponse.split('\n');
-          const parsedWeather = {
-            current: weatherLines[0].replace('Current: ', ''),
-            tomorrow: weatherLines[1].replace('Tomorrow: ', ''),
-            wednesday: weatherLines[2].replace('Wednesday: ', '')
-          };
-          setWeatherData(parsedWeather);
-        } else {
-          // Fallback data
-          setWeatherData({
-            current: '24°C, Sunny',
-            tomorrow: '22°C, Partly Cloudy',
-            wednesday: '19°C, Rain'
-          });
-          console.log("Warning: getWeatherForecast function not available in backend");
-        }
-
+        
+        setWeatherData(parsedWeather);
+        
         // Fetch market prices
-        if (typeof icpblockfarmapp_backend.getMarketPrices === 'function') {
-          const pricesResponse = await icpblockfarmapp_backend.getMarketPrices();
-          const priceLines = pricesResponse.split('\n');
-          const parsedPrices = priceLines.map(line => {
-            const [crop, priceWithTrend] = line.split(': ');
-            const [price, trend] = priceWithTrend.split(' ');
-            return {
-              crop,
-              price,
-              trend: trend.includes('+') ? 'up' : 'down',
-              change: trend
-            };
-          });
-          setMarketPrices(parsedPrices);
-        } else {
-          // Fallback data
-          setMarketPrices([
-            { crop: 'Corn', price: '$5.20/bushel', trend: 'up', change: '(+2.3%)' },
-            { crop: 'Wheat', price: '$6.75/bushel', trend: 'down', change: '(-1.5%)' },
-            { crop: 'Soybeans', price: '$13.40/bushel', trend: 'up', change: '(+3.1%)' },
-            { crop: 'Rice', price: '$14.25/cwt', trend: 'up', change: '(+0.8%)' }
-          ]);
-          console.log("Warning: getMarketPrices function not available in backend");
-        }
+        const pricesResponse = await icpblockfarmapp_backend.getMarketPrices();
+        const priceLines = pricesResponse.split('\n');
+        const parsedPrices = priceLines.map(line => {
+          const [crop, priceWithTrend] = line.split(': ');
+          const [price, trend] = priceWithTrend.split(' ');
+          return {
+            crop,
+            price,
+            trend: trend.includes('+') ? 'up' : 'down',
+            change: trend
+          };
+        });
+        setMarketPrices(parsedPrices);
 
-        // Fetch disease alerts
-        if (typeof icpblockfarmapp_backend.getDiseaseAlerts === 'function') {
-          const diseaseResponse = await icpblockfarmapp_backend.getDiseaseAlerts();
-          const diseaseLines = diseaseResponse.split('\n');
-          const parsedDiseases = diseaseLines.map(line => {
-            const [crop, diseaseInfo] = line.split(': ');
-            const [disease, risk] = diseaseInfo.split(' - ');
-            return {
-              crop,
-              disease,
-              risk: risk.toLowerCase().includes('high') ? 'high' : 'medium',
-              recommendation: risk.includes('HIGH') 
+        // Generate random disease alerts using LLM
+        const crops = ['Corn', 'Wheat', 'Soybeans', 'Tomatoes', 'Rice', 'Potatoes'];
+        const randomCrops = crops.sort(() => 0.5 - Math.random()).slice(0, 2);
+        const diseasePrompt = `Generate 2 realistic crop disease alerts for ${randomCrops.join(' and ')}. For each, include the crop name, disease name, risk level (HIGH or MEDIUM), and a brief recommendation. Format each alert as "CropName: DiseaseName - RISK_LEVEL"`;
+        
+        const diseaseResponse = await icpblockfarmapp_backend.getLLMFarmingAdvice(diseasePrompt);
+        const diseaseLines = diseaseResponse.split('\n').filter(line => line.trim() !== '');
+        
+        const parsedDiseases = diseaseLines.map(line => {
+          // Try to extract information from the LLM response
+          let crop = '', disease = '', risk = 'medium', recommendation = '';
+          
+          // First try to parse with the expected format
+          const colonSplit = line.split(':');
+          if (colonSplit.length >= 2) {
+            crop = colonSplit[0].trim();
+            const remainingText = colonSplit.slice(1).join(':').trim();
+            
+            const dashSplit = remainingText.split('-');
+            if (dashSplit.length >= 2) {
+              disease = dashSplit[0].trim();
+              const riskText = dashSplit[1].trim();
+              risk = riskText.toLowerCase().includes('high') ? 'high' : 'medium';
+              
+              // Generate appropriate recommendation based on risk
+              recommendation = risk === 'high' 
                 ? 'Apply fungicide immediately and monitor closely.' 
-                : 'Monitor conditions and prepare preventative measures.'
-            };
-          });
-          setDiseaseAlerts(parsedDiseases);
-        } else {
-          // Fallback data
+                : 'Monitor conditions and prepare preventative measures.';
+            } else {
+              disease = remainingText;
+            }
+          } else {
+            // If we can't parse properly, try to extract what we can
+            const words = line.split(' ');
+            crop = words[0] || 'Unknown Crop';
+            disease = words.slice(1, 3).join(' ') || 'Unknown Disease';
+          }
+          
+          return {
+            crop,
+            disease,
+            risk,
+            recommendation: recommendation || 'Consult with a local agricultural extension for specific treatment options.'
+          };
+        });
+        
+        // If we couldn't parse any diseases from the LLM response, use fallback
+        if (parsedDiseases.length === 0) {
           setDiseaseAlerts([
             { 
-              crop: 'Tomatoes', 
-              disease: 'Late Blight', 
+              crop: randomCrops[0] || 'Corn', 
+              disease: 'Fungal Infection', 
               risk: 'high',
               recommendation: 'Apply fungicide immediately and monitor closely.'
             },
             { 
-              crop: 'Corn', 
-              disease: 'Corn Leaf Blight', 
+              crop: randomCrops[1] || 'Wheat', 
+              disease: 'Rust', 
               risk: 'medium',
               recommendation: 'Monitor conditions and prepare preventative measures.'
             }
           ]);
-          console.log("Warning: getDiseaseAlerts function not available in backend");
+        } else {
+          setDiseaseAlerts(parsedDiseases);
         }
 
         // Fetch AI recommendation
-        if (typeof icpblockfarmapp_backend.getComprehensiveFarmingAdvice === 'function') {
-          const aiResponse = await icpblockfarmapp_backend.getComprehensiveFarmingAdvice("Give me a general farming recommendation based on best practices");
-          setAiRecommendation(aiResponse);
-        } else {
-          // Fallback data
-          setAiRecommendation("Based on current soil moisture levels, weather forecast, and crop growth stage, we recommend irrigation in the next 48 hours. Approximately 1.5 inches of water is optimal for your corn fields.");
-          console.log("Warning: getComprehensiveFarmingAdvice function not available in backend");
-        }
+        const aiResponse = await icpblockfarmapp_backend.getComprehensiveFarmingAdvice("Give me a general farming recommendation based on best practices");
+        setAiRecommendation(aiResponse);
 
         // Fetch livestock health
-        if (typeof icpblockfarmapp_backend.getLivestockHealth === 'function') {
-          const livestockResponse = await icpblockfarmapp_backend.getLivestockHealth();
-          const livestockLines = livestockResponse.split('\n');
-          const parsedLivestock = livestockLines.map(line => {
-            const [animal, info] = line.split(': ');
-            return {
-              animal,
-              info
-            };
-          });
-          setLivestockHealth(parsedLivestock);
-        } else {
-          // Fallback data
-          setLivestockHealth([
-            { animal: 'Cattle', info: 'Good condition, continue regular vaccination schedule.' },
-            { animal: 'Poultry', info: 'Attention needed, possible respiratory issues. Check ventilation in coops, monitor for symptoms.' }
-          ]);
-          console.log("Warning: getLivestockHealth function not available in backend");
-        }
+        const livestockResponse = await icpblockfarmapp_backend.getLivestockHealth();
+        const livestockLines = livestockResponse.split('\n');
+        const parsedLivestock = livestockLines.map(line => {
+          const [animal, info] = line.split(': ');
+          return {
+            animal,
+            info
+          };
+        });
+        setLivestockHealth(parsedLivestock);
       } catch (error) {
         console.error("Error fetching data:", error);
-        // Set fallback data if not already set
-        if (!weatherData) {
-          setWeatherData({
-            current: '24°C, Sunny',
-            tomorrow: '22°C, Partly Cloudy',
-            wednesday: '19°C, Rain'
-          });
-        }
-        // ... set other fallback data if needed ...
+        // If there's an error during fetch, load fallback data
+        loadFallbackData();
       } finally {
         setIsLoading(false);
       }
     };
 
     fetchData();
-  }, []);
+  }, [backendAvailable]);
 
   function handleCropAdvice(event) {
     event.preventDefault();
     const crop = selectedCrop.toLowerCase();
     
-    if (typeof icpblockfarmapp_backend.getFarmingAdvice === 'function') {
+    if (backendAvailable) {
+      setIsLoading(true); // Changed from false to true
       icpblockfarmapp_backend.getFarmingAdvice(crop).then((advice) => {
         setAdvice(advice);
+        setIsLoading(false);
       }).catch(error => {
         console.error("Error getting farming advice:", error);
-        setAdvice("Sorry, we couldn't retrieve advice for this crop at the moment. Please try again later.");
+        setAdvice(getFallbackAdvice(crop));
+        setIsLoading(false);
       });
     } else {
-      // Fallback advice
-      const fallbackAdvice = {
-        "corn": "Corn needs full sun and well-drained soil. Plant in spring when soil temperature reaches 60°F. Space rows 30-36 inches apart.",
-        "tomatoes": "Tomatoes thrive in warm soil and full sun. Plant seedlings after last frost. Water deeply and regularly.",
-        "wheat": "Wheat requires cool weather for early growth. Plant in fall for winter wheat or early spring for spring wheat. Needs well-drained soil.",
-        "rice": "Rice needs flooded conditions and warm temperatures. Maintain 2-4 inches of water throughout growing season.",
-        "potatoes": "Potatoes grow best in loose, well-drained soil. Plant seed potatoes 12 inches apart and 4 inches deep.",
-        "soybeans": "Soybeans perform best with full sun exposure and well-drained soil with pH 6.0-6.8. Plant after soil temperatures reach 60°F."
-      };
-      
-      setAdvice(fallbackAdvice[crop] || `We don't have specific advice for ${crop} in our database yet.`);
-      console.log("Warning: getFarmingAdvice function not available in backend");
+      setAdvice(getFallbackAdvice(crop));
     }
     
     return false;
+  }
+
+  function getFallbackAdvice(crop) {
+    const fallbackAdvice = {
+      "corn": "Corn needs full sun and well-drained soil. Plant in spring when soil temperature reaches 60°F. Space rows 30-36 inches apart.",
+      "tomatoes": "Tomatoes thrive in warm soil and full sun. Plant seedlings after last frost. Water deeply and regularly.",
+      "wheat": "Wheat requires cool weather for early growth. Plant in fall for winter wheat or early spring for spring wheat. Needs well-drained soil.",
+      "rice": "Rice needs flooded conditions and warm temperatures. Maintain 2-4 inches of water throughout growing season.",
+      "potatoes": "Potatoes grow best in loose, well-drained soil. Plant seed potatoes 12 inches apart and 4 inches deep.",
+      "soybeans": "Soybeans perform best with full sun exposure and well-drained soil with pH 6.0-6.8. Plant after soil temperatures reach 60°F."
+    };
+    
+    return fallbackAdvice[crop] || `We don't have specific advice for ${crop} in our database yet.`;
   }
 
   function handleSearch(event) {
     event.preventDefault();
     setAiRecommendation("Analyzing your query: " + searchQuery + "...");
     
-    // Check if we should use the real LLM or simulated LLM
     if (useLLM) {
-      if (typeof icpblockfarmapp_backend.getLLMFarmingAdvice === 'function') {
-        // Use the real LLM backend function
+      if (backendAvailable) {
+        setIsLoading(true); // Changed from false to true
         icpblockfarmapp_backend.getLLMFarmingAdvice(searchQuery).then((response) => {
           setAiRecommendation(response);
+          setIsLoading(false);
         }).catch(error => {
           console.error("Error getting LLM recommendation:", error);
-          // If there's an error with the real LLM, fall back to simulation
           simulateLLMResponse(searchQuery);
         });
       } else {
-        // If the backend function isn't available, use simulation
         simulateLLMResponse(searchQuery);
       }
       return;
     }
     
-    // Standard AI processing with a delay (unchanged)
+    // Standard AI processing
     setTimeout(() => {
-      if (typeof icpblockfarmapp_backend.getComprehensiveFarmingAdvice === 'function') {
-        // Use getComprehensiveFarmingAdvice instead of getAIRecommendation
-        // This is a shared method that calls the LLM
+      if (backendAvailable) {
         icpblockfarmapp_backend.getComprehensiveFarmingAdvice(searchQuery).then((response) => {
           setAiRecommendation(response);
         }).catch(error => {
           console.error("Error getting AI recommendation:", error);
-          // Check if it's a connection error
-          if (error.toString().includes("502") || error.toString().includes("connection")) {
-            setAiRecommendation("⚠️ Cannot connect to the backend canister. Please ensure the local replica is running with 'dfx start' in a terminal window.\n\nFor now, here's a general response:\n\nBased on your query about \"" + 
-              searchQuery + "\", consider monitoring soil moisture and weather conditions. For more specific advice, please ensure the backend is running.");
-          } else {
-            setAiRecommendation("I'm sorry, I couldn't process your query at this time. Please try again later.");
-          }
+          simulateLLMResponse(searchQuery);
         });
       } else {
-        // Generate a fallback response
-        setAiRecommendation(`Based on your query about "${searchQuery}", I recommend monitoring soil moisture levels and considering irrigation if dry conditions persist. For more specific advice, please check the crop management section.`);
-        console.log("Warning: getComprehensiveFarmingAdvice function not available in backend");
+        simulateLLMResponse(searchQuery);
       }
     }, 1500);
+  }
+
+  function simulateLLMResponse(query) {
+    setIsLoading(false);
+    
+    setTimeout(() => {
+      const responses = {
+        "corn": "Based on your query about corn, I recommend:\n\n1. For optimal yield, ensure soil pH is between 5.8-6.8\n2. Apply nitrogen fertilizer in split applications\n3. Monitor for corn rootworm and European corn borer\n4. Maintain soil moisture especially during tasseling\n\nCurrent market trends suggest storing corn until mid-season if storage facilities permit.",
+        "tomato": "For tomato cultivation:\n\n1. Prune suckers regularly to improve airflow\n2. Consider calcium supplementation to prevent blossom end rot\n3. Implement drip irrigation to reduce foliar diseases\n4. Monitor for early blight and septoria leaf spot\n\nHeirloom varieties are showing increased market demand this season.",
+        "wheat": "Wheat management recommendations:\n\n1. Apply fungicide at flag leaf emergence for disease prevention\n2. Monitor nitrogen levels with tissue testing\n3. Scout for aphids and rust infections weekly\n4. Consider growth regulators if lodging is a concern\n\nGlobal wheat prices are projected to increase 4-7% by harvest time.",
+        "irrigation": "Irrigation optimization strategies:\n\n1. Implement soil moisture sensors at multiple depths\n2. Consider deficit irrigation during less sensitive growth stages\n3. Adjust irrigation timing to early morning to reduce evaporation\n4. Evaluate water quality, particularly for sodium and bicarbonate levels\n\nNew precision irrigation technologies show 15-20% water savings potential.",
+        "pest": "Integrated pest management approach:\n\n1. Establish action thresholds for key pests in your region\n2. Implement beneficial insect habitat around field borders\n3. Rotate pesticide modes of action to prevent resistance\n4. Consider pheromone traps for monitoring pest populations\n\nBiological control agents are showing increased efficacy for specific crop-pest combinations.",
+        "soil": "Soil health improvement strategies:\n\n1. Implement multi-species cover crops between cash crops\n2. Consider reduced tillage practices to maintain soil structure\n3. Apply compost or manure to increase organic matter\n4. Test for micronutrient deficiencies, particularly zinc and boron\n\nHealthy soils can reduce fertilizer requirements by up to 30% over time.",
+        "market": "Current agricultural market analysis:\n\n1. Commodity futures indicate strengthening prices for corn and soybeans\n2. Consider forward contracting 30-40% of expected production\n3. Specialty crop markets show increased demand for organic certification\n4. Input costs are projected to increase 5-8% next season\n\nDiversifying marketing channels can improve overall farm profitability."
+      };
+      
+      let response = "Based on your query about \"" + query + "\", here are my recommendations:\n\n" +
+        "1. Monitor soil moisture levels and adjust irrigation accordingly\n" +
+        "2. Implement integrated pest management practices\n" +
+        "3. Consider crop rotation to improve soil health\n" +
+        "4. Stay updated on weather forecasts to plan field operations\n\n" +
+        "For more specific advice, please provide details about your location, current crops, and specific challenges.";
+      
+      for (const [keyword, specificResponse] of Object.entries(responses)) {
+        if (query.toLowerCase().includes(keyword)) {
+          response = specificResponse;
+          break;
+        }
+      }
+      
+      setAiRecommendation(response);
+      setIsLoading(false);
+    }, 2000);
   }
 
   if (isLoading) {
@@ -295,7 +353,6 @@ function App() {
     );
   }
 
-  // Add toggle for LLM mode
   const toggleLLMMode = () => {
     setUseLLM(!useLLM);
   };
@@ -305,12 +362,18 @@ function App() {
       <header className="app-header">
         <h1>AI-Powered Farm Advisor</h1>
         <p className="tagline">Intelligent farming solutions for optimal yield and sustainability</p>
+        {connectionStatus === 'disconnected' && (
+          <div className="connection-warning">
+            ⚠️ Running in Demo Mode - Backend not connected. Start the local replica with 'dfx start' in a terminal.
+          </div>
+        )}
         <div className="llm-toggle">
           <label>
             <input 
               type="checkbox" 
               checked={useLLM} 
               onChange={toggleLLMMode} 
+              disabled={!backendAvailable}
             />
             Use Advanced AI (LLM)
           </label>
@@ -371,7 +434,11 @@ function App() {
         
         <div className="card ai-card">
           <h3><i className="ai-icon"></i> AI Recommendation</h3>
-          <div className="ai-response">{aiRecommendation}</div>
+          <div className="ai-response">
+            {aiRecommendation.split('\n').map((line, i) => (
+              <p key={i}>{line}</p>
+            ))}
+          </div>
         </div>
         
         <div className="dashboard">
@@ -589,7 +656,7 @@ function App() {
       </div>
       
       <footer className="app-footer">
-        <p>© 2023 AI-Powered Farm Advisor | Running on Internet Computer Protocol</p>
+        <p>© 2025 AI-Powered Farm Advisor | Running on Internet Computer Protocol</p>
       </footer>
     </main>
   );

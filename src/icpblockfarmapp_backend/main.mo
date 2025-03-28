@@ -1,156 +1,134 @@
-// Remove or fix the problematic import on line 3
-// Make sure imports are at the top of the file before any other declarations
-
-// Proper import syntax for Motoko - all imports must be at the top of the file
 import Text "mo:base/Text";
-import Array "mo:base/Array";
-import Debug "mo:base/Debug";
-import Nat "mo:base/Nat";
-import Int "mo:base/Int";
-import Time "mo:base/Time";
-import Principal "mo:base/Principal";
+import LLM "mo:llm";
+// Keep only the imports we need
+import Blob "mo:base/Blob";
+import IC "ic:aaaaa-aa";
 
-// Your actor definition should follow
 actor {
-  // LLM canister interface
-  type LLMCanister = actor {
-    complete : shared (params : CompleteParams) -> async CompleteResponse;
-  };
 
-  type CompleteParams = {
-    prompt : Text;
-    systemPrompt : ?Text; // Renamed from 'system' to 'systemPrompt'
-    max_tokens : ?Nat;
-    temperature : ?Float;
-  };
+  let model = #Llama3_1_8B;
+ 
 
-  type CompleteResponse = {
-    completion : Text;
-  };
+  let baseSystemPrompt = 
+    "You are a helpful farming assistant with expertise in agriculture, crop care, livestock management, and weather forecasting. " #
+    "Be concise, practical, and friendly. Limit answers to under 200 words.";
 
-  // LLM canister principal - replace with the actual canister ID
-  let llmCanisterId = Principal.fromText("rrkah-fqaaa-aaaaa-aaaaq-cai"); // Use a valid test principal
-  let llmCanister : LLMCanister = actor(Principal.toText(llmCanisterId));
+  // === Helper ===
+
+  func chatWithLLM(prompt : Text) : async Text {
+    await LLM.chat(model, [
+      { role = #system_; content = baseSystemPrompt },
+      { role = #user; content = prompt }
+    ])
+  };
   
-  // Function to call the LLM canister with improved error handling
-  public shared func askLLM(prompt : Text, systemPrompt : Text) : async Text {
-    let params : CompleteParams = {
-      prompt = prompt;
-      systemPrompt = ?systemPrompt; // Updated to match the renamed field
-      max_tokens = ?512;  // Reduced for faster responses
-      temperature = ?0.7;
-    };
+  // Format AI responses to be more human-friendly
+  func formatAIResponse(response : Text) : Text {
+    var formatted = response;
     
-    try {
-      let response = await llmCanister.complete(params);
-      return response.completion;
-    } catch (e) {
-      return "I encountered an issue while processing your request. The LLM service might be experiencing high demand. Please try again in a few moments.";
-    };
+    // Add formatting for better readability with Unicode emphasis
+    formatted := "\n📊 𝗙𝗔𝗥𝗠 𝗔𝗦𝗦𝗜𝗦𝗧𝗔𝗡𝗧 𝗔𝗜 📊\n\n" # formatted;
+    
+    // Add a friendly closing with Unicode emphasis
+    formatted := formatted # "\n\n[𝗡𝗲𝗲𝗱 𝗺𝗼𝗿𝗲 𝗱𝗲𝘁𝗮𝗶𝗹𝘀? Just ask!]";
+    
+    return formatted;
   };
 
-  // Base system prompt for all farming queries
-  private let baseFarmingSystemPrompt = "You are a helpful farming assistant with expertise in agriculture, weather patterns, crop diseases, and livestock management. Provide concise, practical advice to farmers. Keep responses under 200 words and focus on actionable information.";
+  // === Public Methods ===
 
-  // Keep these as query functions for compatibility with frontend
   public query func greet(name : Text) : async Text {
-    return "Hello, " # name # "! Welcome to your farm assistant.";
+    return "Hello, " # name # "! Welcome to your AI-powered farming assistant.";
   };
 
-  public query func getFarmingAdvice(crop : Text) : async Text {
-    let advice = switch (crop) {
-      case "corn" { 
-        "Corn needs full sun and well-drained soil. Plant in spring when soil temperature reaches 60°F. Space rows 30-36 inches apart. Based on current weather patterns, consider applying nitrogen fertilizer within the next 7 days for optimal growth." 
-      };
-      case "tomatoes" { 
-        "Tomatoes thrive in warm soil and full sun. Plant seedlings after last frost. Water deeply and regularly. Our analysis indicates a moderate risk of late blight in your region - consider preventative copper-based fungicide application." 
-      };
-      case "wheat" { 
-        "Wheat requires cool weather for early growth. Plant in fall for winter wheat or early spring for spring wheat. Needs well-drained soil. Current market trends suggest storing harvested wheat for 3-4 weeks for better prices." 
-      };
-      case "rice" { 
-        "Rice needs flooded conditions and warm temperatures. Maintain 2-4 inches of water throughout growing season. Soil analysis indicates your fields may benefit from additional potassium supplements." 
-      };
-      case "potatoes" { 
-        "Potatoes grow best in loose, well-drained soil. Plant seed potatoes 12 inches apart and 4 inches deep. Based on regional disease reports, watch for early signs of potato blight and consider preventative fungicide rotation." 
-      };
-      case "soybeans" { 
-        "Soybeans perform best with full sun exposure and well-drained soil with pH 6.0-6.8. Plant after soil temperatures reach 60°F. Current market analysis shows strong demand - consider forward contracting a portion of your expected yield." 
-      };
-      case _ { 
-        "I don't have specific advice for " # crop # " in my knowledge base. Try asking about common crops like corn, tomatoes, wheat, rice, potatoes, or soybeans." 
-      };
+  
+  // Keep the transform function to maintain interface compatibility
+  public query func transform({
+    context : Blob;  // Rename to _context to indicate it's unused
+    response : IC.http_request_result;
+  }) : async IC.http_request_result {
+    {
+      response with headers = []; // not interested in the headers
     };
-    
-    return advice;
   };
 
-  public query func getWeatherForecast() : async Text {
-    return "Current: 24°C, Sunny\nTomorrow: 22°C, Partly Cloudy\nWednesday: 19°C, Rain";
+  public func getWeather(city : Text) : async Text {
+    // Use LLM to generate weather data instead of API calls
+    let prompt = "Generate realistic current weather data for " # city # " in a readable format. Include temperature, conditions, humidity, and wind speed.";
+    let weatherData = await chatWithLLM(prompt);
+    return formatAIResponse("Weather data for " # city # ":\n" # weatherData);
   };
 
-  public query func getMarketPrices() : async Text {
-    return "Corn: $5.20/bushel (+2.3%)\nWheat: $6.75/bushel (-1.5%)\nSoybeans: $13.40/bushel (+3.1%)\nRice: $14.25/cwt (+0.8%)";
+ 
+
+  public func getWeatherForecast() : async Text {
+    let prompt = "Provide a 3-day weather forecast suitable for farmers. Include temperature and conditions for each day.";
+    let forecast = await chatWithLLM(prompt);
+    return formatAIResponse(forecast);
   };
 
-  public query func getDiseaseAlerts() : async Text {
-    return "Tomatoes: Late Blight - HIGH RISK\nCorn: Corn Leaf Blight - MEDIUM RISK";
+  public func getMarketPrices() : async Text {
+    let prompt = "List current market prices for corn, wheat, soybeans, and rice. Include any recent price trends.";
+    return await chatWithLLM(prompt);
   };
 
-  public shared func getAIRecommendation(farmData : Text) : async Text {
-    let prompt = "Analyze this farm data and provide specific recommendations: " # farmData;
-    let systemPrompt = baseFarmingSystemPrompt # " Focus on irrigation, fertilization, and pest management recommendations based on the provided data.";
-    return await askLLM(prompt, systemPrompt);
+  public func getDiseaseAlerts() : async Text {
+    let prompt = "List current crop disease alerts. Include affected crops, regions, and preventive measures.";
+    return await chatWithLLM(prompt);
   };
 
-  public query func getLivestockHealth() : async Text {
-    return "Cattle: Good condition, continue regular vaccination schedule.\nPoultry: Attention needed, possible respiratory issues. Check ventilation in coops, monitor for symptoms.";
+  public func getLivestockHealth() : async Text {
+    let prompt = "Give a health update for common farm animals (cattle, poultry, goats). Mention seasonal risks and care tips.";
+    return await chatWithLLM(prompt);
   };
 
-  // Add LLM versions with different names
+  // Existing methods
   public shared func getLLMGreeting(name : Text) : async Text {
-    let prompt = "Greet a farmer named " # name # " in a friendly, professional way.";
-    return await askLLM(prompt, baseFarmingSystemPrompt);
+    let prompt = "Greet a farmer named " # name # " in a warm and helpful tone.";
+    return await chatWithLLM(prompt);
   };
 
   public shared func getLLMFarmingAdvice(crop : Text) : async Text {
-    let prompt = "Provide specific farming advice for growing " # crop # ". Include information about soil requirements, planting times, spacing, and any current seasonal considerations.";
-    return await askLLM(prompt, baseFarmingSystemPrompt);
+    let prompt = "Give expert advice for growing " # crop # ". Include soil preferences, planting time, spacing, irrigation, and disease considerations.";
+    return await chatWithLLM(prompt);
   };
 
   public shared func getLLMWeatherForecast() : async Text {
-    let prompt = "Generate a 3-day weather forecast for a farming region. Include temperature, conditions, and any weather warnings relevant to agriculture.";
-    let systemPrompt = baseFarmingSystemPrompt # " When discussing weather forecasts, format them clearly with dates and temperatures.";
-    return await askLLM(prompt, systemPrompt);
+    let prompt = "Provide a 3-day weather forecast suitable for farmers. Include temperature and conditions.";
+    return await chatWithLLM(prompt);
   };
 
   public shared func getLLMMarketPrices() : async Text {
-    let prompt = "Provide current market prices for common agricultural commodities (corn, wheat, soybeans, rice). Include price trends (up or down).";
-    let systemPrompt = baseFarmingSystemPrompt # " When discussing market prices, include the price per unit and percentage changes.";
-    return await askLLM(prompt, systemPrompt);
+    let prompt = "List current market prices for corn, wheat, soybeans, and rice. Include any recent price trends.";
+    return await chatWithLLM(prompt);
   };
 
   public shared func getLLMDiseaseAlerts() : async Text {
-    let prompt = "Generate current disease alerts for common crops. Include risk levels and prevention recommendations.";
-    let systemPrompt = baseFarmingSystemPrompt # " When discussing crop diseases, clearly indicate risk levels (HIGH, MEDIUM, LOW) and provide specific prevention measures.";
-    return await askLLM(prompt, systemPrompt);
-  };
-
-  public shared func getLLMAIRecommendation(farmData : Text) : async Text {
-    let prompt = "Based on this farm data: " # farmData # ", provide a specific recommendation for irrigation, fertilization, or pest management.";
-    return await askLLM(prompt, baseFarmingSystemPrompt);
+    let prompt = "List current crop disease alerts. Include affected crops, regions, and preventive measures.";
+    return await chatWithLLM(prompt);
   };
 
   public shared func getLLMLivestockHealth() : async Text {
-    let prompt = "Provide a health status update for common farm livestock (cattle, poultry). Include any seasonal health concerns and preventative measures.";
-    let systemPrompt = baseFarmingSystemPrompt # " When discussing livestock health, provide specific monitoring guidelines and early warning signs of common issues.";
-    return await askLLM(prompt, systemPrompt);
+    let prompt = "Give a health update for common farm animals (cattle, poultry, goats). Mention seasonal risks and care tips.";
+    return await chatWithLLM(prompt);
   };
 
-  // Comprehensive farming advice with LLM
+  public shared func getLLMAIRecommendation(farmData : Text) : async Text {
+    let prompt = "Analyze the following farm data and provide recommendations for improving yield or reducing risk:\n" # farmData;
+    return await chatWithLLM(prompt);
+  };
+
   public shared func getComprehensiveFarmingAdvice(userQuery : Text) : async Text {
-    let prompt = "The farmer is asking: \"" # userQuery # "\". Provide comprehensive farming advice addressing this specific query.";
-    let systemPrompt = baseFarmingSystemPrompt # " Analyze the query carefully and provide information that directly addresses the farmer's specific question or concern.";
-    return await askLLM(prompt, systemPrompt);
+    let prompt = "A farmer is asking: \"" # userQuery # "\". Provide detailed and useful farming advice.";
+    let response = await chatWithLLM(prompt);
+    return formatAIResponse(response);
+  };
+
+  // Add this method to match what's being called in the frontend
+  public func getFarmingAdvice(crop : Text) : async Text {
+    let prompt = "Give expert advice for growing " # crop # ". Include soil preferences, planting time, spacing, irrigation, and disease considerations.";
+    let response = await chatWithLLM(prompt);
+    return formatAIResponse(response);
   };
 };
+
