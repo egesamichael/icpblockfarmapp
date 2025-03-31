@@ -461,10 +461,10 @@ function App() {
             {diseaseAlerts?.map((alert, index) => (
               <div key={index} className={`disease-alert ${alert.risk === 'high' ? 'high-risk' : ''}`}>
                 <div className="alert-header">
-                  <span className="crop-name">{alert.crop}</span>
+                  <span className="disease-crop-name">{alert.crop}</span>
                   <span className={`risk-badge ${alert.risk}`}>{alert.risk.toUpperCase()} RISK</span>
                 </div>
-                <p className="disease-name">{alert.disease}</p>
+                <p className="disease-crop-name">{alert.disease}</p>
                 <p className="recommendation">{alert.recommendation}</p>
               </div>
             ))}

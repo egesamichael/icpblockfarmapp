@@ -191,26 +191,48 @@ select:focus, input:focus {
 
 // Market prices text visibility fix
 .market-card {
-  background-color: #21952b;
+  background-color: #f0fff4;
+}
+
+.market-card h3 {
+  color: #2a6b35;
+}
+
+.price-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid #eee;
+}
+
+.price-item:last-child {
+  border-bottom: none;
 }
 
 .price-item .crop-name {
-  font-weight: 500;
-  color: #333; // Ensure visibility
+  font-weight: 600;
+  color: #fff;
+}
+
+.disease-crop-name{
+  font-weight: 600;
+  color: #000;
 }
 
 .price-item .crop-price {
-  color: #333; // Ensure visibility
+  color: #fff;
+  font-weight: 500;
 }
 
 .price-up {
-  color: #4caf50;
-  font-weight: 500; // Make more visible
+  color: #2e7d32;
+  font-weight: 600;
 }
 
 .price-down {
-  color: #f44336;
-  font-weight: 500; // Make more visible
+  color: #c62828;
+  font-weight: 600;
 }
 
 .disease-alert {
@@ -239,7 +261,7 @@ select:focus, input:focus {
   font-size: 0.8rem;
   font-weight: bold;
   background-color: #ffc107;
-  color: #fff;
+  color: #000;
 }
 
 .risk-badge.high {
@@ -249,6 +271,7 @@ select:focus, input:focus {
 .disease-name {
   font-weight: 500;
   margin: 8px 0;
+  
 }
 
 .recommendation {
