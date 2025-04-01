@@ -7,7 +7,8 @@
       "type": "motoko",
       "feature_flags": [
         "http_outcalls"
-      ]
+      ],
+      "dependencies": []
     },
     "icpblockfarmapp_frontend": {
       "type": "assets",

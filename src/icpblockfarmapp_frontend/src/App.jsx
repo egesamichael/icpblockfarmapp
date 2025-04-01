@@ -1,7 +1,17 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { AuthClient } from "@dfinity/auth-client";
+import { HttpAgent } from "@dfinity/agent";
 import { icpblockfarmapp_backend } from 'declarations/icpblockfarmapp_backend';
 
 function App() {
+  const navigate = useNavigate();
+  const [authClient, setAuthClient] = useState(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [principal, setPrincipal] = useState(null);
+  const [authChecking, setAuthChecking] = useState(true);
+  
+  // Existing state variables
   const [greeting, setGreeting] = useState('');
   const [advice, setAdvice] = useState('');
   const [selectedCrop, setSelectedCrop] = useState('');
@@ -17,16 +27,91 @@ function App() {
   const [connectionStatus, setConnectionStatus] = useState('checking');
   const [backendAvailable, setBackendAvailable] = useState(false);
 
+  // Initialize auth client
+  useEffect(() => {
+    const initAuth = async () => {
+      try {
+        const client = await AuthClient.create();
+        setAuthClient(client);
+        
+        const isAuthenticated = await client.isAuthenticated();
+        setIsAuthenticated(isAuthenticated);
+        
+        if (isAuthenticated) {
+          const identity = client.getIdentity();
+          setPrincipal(identity.getPrincipal().toString());
+        } else {
+          navigate('/login');
+        }
+      } catch (error) {
+        console.error("Auth initialization error:", error);
+      } finally {
+        setAuthChecking(false);
+      }
+    };
+    
+    initAuth();
+  }, [navigate]);
+
+  // Login function
+  const login = async () => {
+    if (!authClient) return;
+    
+    try {
+      await authClient.login({
+        identityProvider: process.env.DFX_NETWORK === "ic" 
+          ? "https://identity.ic0.app" 
+          : `http://localhost:4943?canisterId=${process.env.CANISTER_ID_INTERNET_IDENTITY}`,
+        onSuccess: async () => {
+          const isAuthenticated = await authClient.isAuthenticated();
+          setIsAuthenticated(isAuthenticated);
+          
+          if (isAuthenticated) {
+            const identity = authClient.getIdentity();
+            setPrincipal(identity.getPrincipal().toString());
+            navigate('/');
+          }
+        },
+      });
+    } catch (error) {
+      console.error("Login error:", error);
+    }
+  };
+
+  // Logout function
+  const logout = async () => {
+    if (!authClient) return;
+    
+    await authClient.logout();
+    setIsAuthenticated(false);
+    setPrincipal(null);
+    navigate('/login');
+  };
+
   // Check backend connection when component mounts
   useEffect(() => {
+    if (authChecking || !isAuthenticated) return;
+
     const checkBackendConnection = async () => {
       try {
-        // Simple ping to check if backend is available
-        await icpblockfarmapp_backend.greet("connection_test");
+        // Use authenticated identity if available
+        const identity = authClient?.getIdentity();
+        const agent = identity 
+          ? new HttpAgent({ identity }) 
+          : new HttpAgent();
+        
+        if (process.env.DFX_NETWORK !== "ic") {
+          await agent.fetchRootKey();
+        }
+        
+        // Try a simple call to test connection
+        const result = await icpblockfarmapp_backend.greet("connection_test");
+        console.log("Backend connection successful:", result);
+        
         setBackendAvailable(true);
         setConnectionStatus('connected');
       } catch (error) {
-        console.error("Backend connection error:", error);
+        console.error("Backend connection error details:", error);
         setBackendAvailable(false);
         setConnectionStatus('disconnected');
         loadFallbackData();
@@ -61,7 +146,7 @@ function App() {
     ]);
 
     checkBackendConnection();
-  }, []);
+  }, [authChecking, isAuthenticated, authClient]);
 
   // Load fallback data when backend is not available
   const loadFallbackData = () => {
@@ -103,16 +188,13 @@ function App() {
 
   // Fetch data from backend when component mounts and backend is available
   useEffect(() => {
-    if (!backendAvailable) return;
+    if (!backendAvailable || !isAuthenticated) return;
 
     const fetchData = async () => {
       setIsLoading(true);
       try {
-        // Fetch weather data using the LLM-based function
+        // Fetch weather data
         const weatherResponse = await icpblockfarmapp_backend.getWeatherForecast();
-        
-        // Parse the weather data - adjust this based on the actual format returned
-        // Since we're using LLM, the format might be different
         const weatherLines = weatherResponse.split('\n');
         let parsedWeather = {
           current: 'Loading weather data...',
@@ -120,8 +202,6 @@ function App() {
           wednesday: 'Loading forecast...'
         };
         
-        // Extract weather information from the LLM response
-        // This is a simple parsing approach - you might need to adjust based on actual responses
         for (const line of weatherLines) {
           if (line.toLowerCase().includes('today') || line.toLowerCase().includes('current')) {
             parsedWeather.current = line;
@@ -149,7 +229,7 @@ function App() {
         });
         setMarketPrices(parsedPrices);
 
-        // Generate random disease alerts using LLM
+        // Generate disease alerts
         const crops = ['Corn', 'Wheat', 'Soybeans', 'Tomatoes', 'Rice', 'Potatoes'];
         const randomCrops = crops.sort(() => 0.5 - Math.random()).slice(0, 2);
         const diseasePrompt = `Generate 2 realistic crop disease alerts for ${randomCrops.join(' and ')}. For each, include the crop name, disease name, risk level (HIGH or MEDIUM), and a brief recommendation. Format each alert as "CropName: DiseaseName - RISK_LEVEL"`;
@@ -158,10 +238,8 @@ function App() {
         const diseaseLines = diseaseResponse.split('\n').filter(line => line.trim() !== '');
         
         const parsedDiseases = diseaseLines.map(line => {
-          // Try to extract information from the LLM response
           let crop = '', disease = '', risk = 'medium', recommendation = '';
           
-          // First try to parse with the expected format
           const colonSplit = line.split(':');
           if (colonSplit.length >= 2) {
             crop = colonSplit[0].trim();
@@ -173,7 +251,6 @@ function App() {
               const riskText = dashSplit[1].trim();
               risk = riskText.toLowerCase().includes('high') ? 'high' : 'medium';
               
-              // Generate appropriate recommendation based on risk
               recommendation = risk === 'high' 
                 ? 'Apply fungicide immediately and monitor closely.' 
                 : 'Monitor conditions and prepare preventative measures.';
@@ -181,7 +258,6 @@ function App() {
               disease = remainingText;
             }
           } else {
-            // If we can't parse properly, try to extract what we can
             const words = line.split(' ');
             crop = words[0] || 'Unknown Crop';
             disease = words.slice(1, 3).join(' ') || 'Unknown Disease';
@@ -195,7 +271,6 @@ function App() {
           };
         });
         
-        // If we couldn't parse any diseases from the LLM response, use fallback
         if (parsedDiseases.length === 0) {
           setDiseaseAlerts([
             { 
@@ -232,7 +307,6 @@ function App() {
         setLivestockHealth(parsedLivestock);
       } catch (error) {
         console.error("Error fetching data:", error);
-        // If there's an error during fetch, load fallback data
         loadFallbackData();
       } finally {
         setIsLoading(false);
@@ -240,14 +314,15 @@ function App() {
     };
 
     fetchData();
-  }, [backendAvailable]);
+  }, [backendAvailable, isAuthenticated]);
 
+  // Existing helper functions (handleCropAdvice, getFallbackAdvice, handleSearch, simulateLLMResponse)
   function handleCropAdvice(event) {
     event.preventDefault();
     const crop = selectedCrop.toLowerCase();
     
     if (backendAvailable) {
-      setIsLoading(true); // Changed from false to true
+      setIsLoading(true);
       icpblockfarmapp_backend.getFarmingAdvice(crop).then((advice) => {
         setAdvice(advice);
         setIsLoading(false);
@@ -282,7 +357,7 @@ function App() {
     
     if (useLLM) {
       if (backendAvailable) {
-        setIsLoading(true); // Changed from false to true
+        setIsLoading(true);
         icpblockfarmapp_backend.getLLMFarmingAdvice(searchQuery).then((response) => {
           setAiRecommendation(response);
           setIsLoading(false);
@@ -296,7 +371,6 @@ function App() {
       return;
     }
     
-    // Standard AI processing
     setTimeout(() => {
       if (backendAvailable) {
         icpblockfarmapp_backend.getComprehensiveFarmingAdvice(searchQuery).then((response) => {
@@ -344,6 +418,32 @@ function App() {
     }, 2000);
   }
 
+  const toggleLLMMode = () => {
+    setUseLLM(!useLLM);
+  };
+
+  // Loading states
+  if (authChecking) {
+    return (
+      <div className="loading-container">
+        <div className="loading-spinner"></div>
+        <p>Checking authentication...</p>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <div className="login-container">
+        <h1>Farm Advisor Login</h1>
+        <p>Please authenticate to access your farm dashboard</p>
+        <button onClick={login} className="login-button">
+          Login with Internet Identity
+        </button>
+      </div>
+    );
+  }
+
   if (isLoading) {
     return (
       <div className="loading-container">
@@ -353,13 +453,11 @@ function App() {
     );
   }
 
-  const toggleLLMMode = () => {
-    setUseLLM(!useLLM);
-  };
-
+  // Main app render
   return (
     <main>
       <header className="app-header">
+        
         <h1>AI-Powered Farm Advisor</h1>
         <p className="tagline">Intelligent farming solutions for optimal yield and sustainability</p>
         {connectionStatus === 'disconnected' && (
@@ -378,8 +476,15 @@ function App() {
             Use Advanced AI (LLM)
           </label>
         </div>
+
+        <div className="auth-info">
+          <span>Logged in as: {principal?.slice(0, 10)}...</span>
+          <button onClick={logout} className="logout-button">
+            Logout
+          </button>
+        </div>
+        
       </header>
-      
       <div className="tabs">
         <div 
           className={`tab ${activeTab === 'dashboard' ? 'active' : ''}`} 

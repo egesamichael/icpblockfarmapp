@@ -16,6 +16,8 @@
     "src/icpblockfarmapp_frontend"
   ],
   "dependencies": {
-    "@dfinity/agent": "^2.4.0"
+    "@dfinity/agent": "^2.4.0",
+    "@dfinity/auth-client": "^2.4.0",
+    "react-router-dom": "^7.4.1"
   }
 }
