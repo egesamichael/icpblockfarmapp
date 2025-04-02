@@ -1,14 +1,27 @@
 import Text "mo:base/Text";
 import LLM "mo:llm";
-// Keep only the imports we need
 import Blob "mo:base/Blob";
 import IC "ic:aaaaa-aa";
+import Cycles "mo:base/ExperimentalCycles";
+import HashMap "mo:base/HashMap";
+import Principal "mo:base/Principal";
+import Time "mo:base/Time";
+import Iter "mo:base/Iter";
 
 actor {
+  // Subscription types
+  type Subscription = {
+    plan: Text;
+    startTime: Time.Time;
+    endTime: Time.Time;
+  };
+
+  // Subscription storage
+  private stable var subscriptionEntries : [(Principal, Subscription)] = [];
+  private var subscriptions = HashMap.HashMap<Principal, Subscription>(0, Principal.equal, Principal.hash);
 
   let model = #Llama3_1_8B;
  
-
   let baseSystemPrompt = 
     "You are a helpful farming assistant with expertise in agriculture, crop care, livestock management, and weather forecasting. " #
     "Be concise, practical, and friendly. Limit answers to under 200 words.";
@@ -24,15 +37,15 @@ actor {
   
   // Format AI responses to be more human-friendly
   func formatAIResponse(response : Text) : Text {
-    var formatted = response;
+   // var formatted = response;
     
     // Add formatting for better readability with Unicode emphasis
-    formatted := "\n📊 𝗙𝗔𝗥𝗠 𝗔𝗦𝗦𝗜𝗦𝗧𝗔𝗡𝗧 𝗔𝗜 📊\n\n" # formatted;
+   // formatted := "\n📊 𝗙𝗔𝗥𝗠 𝗔𝗦𝗦𝗜𝗦𝗧𝗔𝗡𝗧 𝗔𝗜 📊\n\n" # formatted;
     
     // Add a friendly closing with Unicode emphasis
-    formatted := formatted # "\n\n[𝗡𝗲𝗲𝗱 𝗺𝗼𝗿𝗲 𝗱𝗲𝘁𝗮𝗶𝗹𝘀? Just ask!]";
-    
-    return formatted;
+   // formatted := formatted # "\n\n[𝗡𝗲𝗲𝗱 𝗺𝗼𝗿𝗲 𝗱𝗲𝘁𝗮𝗶𝗹𝘀? Just ask!]";
+    // return formatted;
+    return response;
   };
 
   // === Public Methods ===
@@ -58,8 +71,6 @@ actor {
     let weatherData = await chatWithLLM(prompt);
     return formatAIResponse("Weather data for " # city # ":\n" # weatherData);
   };
-
- 
 
   public func getWeatherForecast() : async Text {
     let prompt = "Provide a 3-day weather forecast suitable for farmers. Include temperature and conditions for each day.";
@@ -129,6 +140,56 @@ actor {
     let prompt = "Give expert advice for growing " # crop # ". Include soil preferences, planting time, spacing, irrigation, and disease considerations.";
     let response = await chatWithLLM(prompt);
     return formatAIResponse(response);
+  };
+
+  // Initialize subscriptions from stable storage
+  system func preupgrade() {
+    subscriptionEntries := Iter.toArray(subscriptions.entries());
+  };
+
+  system func postupgrade() {
+    subscriptions := HashMap.fromIter<Principal, Subscription>(subscriptionEntries.vals(), 10, Principal.equal, Principal.hash);
+    subscriptionEntries := [];
+  };
+
+  // Subscription methods
+  public shared(msg) func processSubscription(planId : Text) : async {success : Bool; message : Text} {
+    let caller = msg.caller;
+    
+    // In a real implementation, you would:
+    // 1. Process ICP token transfer
+    // 2. Verify the payment was successful
+    // 3. Then update the subscription
+    
+    // For demo purposes, we'll just update the subscription
+    let now = Time.now();
+    let oneMonth = 30 * 24 * 60 * 60 * 1000000000; // 30 days in nanoseconds
+    
+    let subscription : Subscription = {
+      plan = planId;
+      startTime = now;
+      endTime = now + oneMonth;
+    };
+    
+    subscriptions.put(caller, subscription);
+    
+    return {success = true; message = "Subscription activated successfully"};
+  };
+
+  public shared(msg) func getUserSubscription() : async ?Text {
+    let caller = msg.caller;
+    
+    switch (subscriptions.get(caller)) {
+      case (null) { return null; };
+      case (?subscription) {
+        if (Time.now() > subscription.endTime) {
+          // Subscription expired
+          subscriptions.delete(caller);
+          return null;
+        };
+        return ?subscription.plan;
+      };
+    };
   };
 };
 

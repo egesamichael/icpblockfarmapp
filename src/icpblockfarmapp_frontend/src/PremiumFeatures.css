@@ -1,0 +1,305 @@
+.premium-features {
+  padding: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.premium-description {
+  text-align: center;
+  margin-bottom: 2rem;
+  font-size: 1.1rem;
+  color: #555;
+}
+
+.subscription-plans {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2rem;
+  justify-content: center;
+}
+
+.plan-card {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  padding: 2rem;
+  width: 300px;
+  transition: transform 0.3s, box-shadow 0.3s;
+  position: relative;
+  overflow: hidden;
+}
+
+.plan-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+
+.active-plan {
+  border: 2px solid #4CAF50;
+}
+
+.active-plan::before {
+  content: "Active";
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: #4CAF50;
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.plan-card h3 {
+  margin-top: 0;
+  font-size: 1.5rem;
+  color: #333;
+}
+
+.plan-price {
+  font-size: 2rem;
+  font-weight: bold;
+  margin: 1rem 0 0.5rem;
+  color: #1a73e8;
+}
+
+.plan-period {
+  color: #666;
+  margin-bottom: 1.5rem;
+}
+
+.plan-features {
+  list-style-type: none;
+  padding: 0;
+  margin: 0 0 2rem;
+}
+
+.plan-features li {
+  padding: 8px 0;
+  border-bottom: 1px solid #eee;
+}
+
+.plan-features li:last-child {
+  border-bottom: none;
+}
+
+.subscribe-btn, .current-plan-btn {
+  width: 100%;
+  padding: 12px;
+  border: none;
+  border-radius: 4px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+.subscribe-btn {
+  background: #1a73e8;
+  color: white;
+}
+
+.subscribe-btn:hover {
+  background: #0d5bbc;
+}
+
+.current-plan-btn {
+  background: #e0e0e0;
+  color: #333;
+  cursor: default;
+}
+
+.transaction-error {
+  background: #ffebee;
+  color: #c62828;
+  padding: 1rem;
+  border-radius: 4px;
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+
+/* Add these styles for the modal */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background-color: white;
+  border-radius: 8px;
+  padding: 20px;
+  max-width: 800px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+  position: relative;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+}
+
+.modal-close-btn {
+  position: absolute;
+  top: 10px;
+  right: 15px;
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #666;
+}
+
+.modal-close-btn:hover {
+  color: #333;
+}
+
+/* Existing premium features styles */
+.premium-features {
+  padding: 20px;
+}
+
+.premium-description {
+  margin-bottom: 20px;
+  text-align: center;
+  color: #555;
+}
+
+.subscription-plans {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  justify-content: center;
+}
+
+.plan-card {
+  background: white;
+  border-radius: 8px;
+  padding: 20px;
+  width: 250px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  text-align: center;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.plan-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.15);
+}
+
+.active-plan {
+  border: 2px solid #1a73e8;
+}
+
+.plan-card h3 {
+  margin-top: 0;
+  color: #333;
+}
+
+.plan-price {
+  font-size: 24px;
+  font-weight: bold;
+  margin: 10px 0 5px;
+  color: #1a73e8;
+}
+
+.plan-period {
+  color: #666;
+  margin-bottom: 15px;
+}
+
+.plan-features {
+  text-align: left;
+  padding-left: 20px;
+  margin-bottom: 20px;
+}
+
+.plan-features li {
+  margin-bottom: 8px;
+  color: #444;
+}
+
+.subscribe-btn {
+  width: 100%;
+  padding: 10px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+  background: #1a73e8;
+  color: white;
+}
+
+.subscribe-btn:hover {
+  background: #0d5bbc;
+}
+
+.current-plan-btn {
+  background: #e0e0e0;
+  color: #333;
+  cursor: default;
+}
+
+.transaction-error {
+  background: #ffebee;
+  color: #c62828;
+  padding: 1rem;
+  border-radius: 4px;
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+
+/* Add these styles to your existing CSS file */
+.analyzing-animation {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.analysis-dots {
+  display: flex;
+  margin-top: 15px;
+  justify-content: center;
+}
+
+.dot {
+  height: 10px;
+  width: 10px;
+  margin: 0 5px;
+  background-color: #4CAF50;
+  border-radius: 50%;
+  display: inline-block;
+  animation: pulse 1.5s infinite ease-in-out;
+}
+
+.dot:nth-child(2) {
+  animation-delay: 0.3s;
+}
+
+.dot:nth-child(3) {
+  animation-delay: 0.6s;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(0.8);
+    opacity: 0.5;
+  }
+  50% {
+    transform: scale(1.2);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0.8);
+    opacity: 0.5;
+  }
+}
+
+.ai-response {
+  min-height: 150px;
+  position: relative;
+}

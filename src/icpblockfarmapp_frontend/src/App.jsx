@@ -3,6 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import { AuthClient } from "@dfinity/auth-client";
 import { HttpAgent } from "@dfinity/agent";
 import { icpblockfarmapp_backend } from 'declarations/icpblockfarmapp_backend';
+import PremiumFeatures from './components/PremiumFeatures';
+import './PremiumFeatures.css';
+import ReactMarkdown from 'react-markdown';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { tomorrow } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import ReactTypingEffect from 'react-typing-effect';
+
 
 function App() {
   const navigate = useNavigate();
@@ -10,8 +17,8 @@ function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [principal, setPrincipal] = useState(null);
   const [authChecking, setAuthChecking] = useState(true);
-  
-  // Existing state variables
+  const [userSubscription, setUserSubscription] = useState(null);
+  const [showPremiumFeatures, setShowPremiumFeatures] = useState(false);
   const [greeting, setGreeting] = useState('');
   const [advice, setAdvice] = useState('');
   const [selectedCrop, setSelectedCrop] = useState('');
@@ -26,7 +33,8 @@ function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState('checking');
   const [backendAvailable, setBackendAvailable] = useState(false);
-
+  const [isTyping, setIsTyping] = useState(false);
+  
   // Initialize auth client
   useEffect(() => {
     const initAuth = async () => {
@@ -40,6 +48,9 @@ function App() {
         if (isAuthenticated) {
           const identity = client.getIdentity();
           setPrincipal(identity.getPrincipal().toString());
+          // Check user subscription status
+          const subscription = await icpblockfarmapp_backend.getUserSubscription();
+          setUserSubscription(subscription);
         } else {
           navigate('/login');
         }
@@ -52,6 +63,23 @@ function App() {
     
     initAuth();
   }, [navigate]);
+
+  const handleSubscribe = async (planId) => {
+    try {
+      setIsLoading(true);
+      const result = await icpblockfarmapp_backend.processSubscription(planId);
+      if (result.success) {
+        setUserSubscription(planId);
+        // setShowPremiumFeatures(false);
+      }
+    } catch (error) {
+      console.error("Subscription error:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Remove the duplicate initAuth useEffect hook here
 
   // Login function
   const login = async () => {
@@ -352,41 +380,47 @@ function App() {
   }
 
   function handleSearch(event) {
-    event.preventDefault();
-    setAiRecommendation("Analyzing your query: " + searchQuery + "...");
-    
-    if (useLLM) {
-      if (backendAvailable) {
-        setIsLoading(true);
-        icpblockfarmapp_backend.getLLMFarmingAdvice(searchQuery).then((response) => {
-          setAiRecommendation(response);
-          setIsLoading(false);
-        }).catch(error => {
-          console.error("Error getting LLM recommendation:", error);
+      event.preventDefault();
+      
+      // Show animated analyzing message
+      setIsTyping(true);
+      setAiRecommendation("Analyzing your query: " + searchQuery + "...");
+      
+      if (useLLM) {
+        if (backendAvailable) {
+          icpblockfarmapp_backend.getLLMFarmingAdvice(searchQuery).then((response) => {
+            setAiRecommendation(response);
+            setIsTyping(false);
+          }).catch(error => {
+            console.error("Error getting LLM recommendation:", error);
+            simulateLLMResponse(searchQuery);
+          });
+        } else {
           simulateLLMResponse(searchQuery);
-        });
-      } else {
-        simulateLLMResponse(searchQuery);
+        }
+        return;
       }
-      return;
+      
+      // For non-LLM mode, make sure to set isTyping to false when done
+      setTimeout(() => {
+        if (backendAvailable) {
+          icpblockfarmapp_backend.getComprehensiveFarmingAdvice(searchQuery).then((response) => {
+            setAiRecommendation(response);
+            setIsLoading(false);
+            setIsTyping(false); // Add this line to reset typing state
+          }).catch(error => {
+            console.error("Error getting AI recommendation:", error);
+            simulateLLMResponse(searchQuery);
+          });
+        } else {
+          simulateLLMResponse(searchQuery);
+        }
+      }, 1500);
     }
-    
-    setTimeout(() => {
-      if (backendAvailable) {
-        icpblockfarmapp_backend.getComprehensiveFarmingAdvice(searchQuery).then((response) => {
-          setAiRecommendation(response);
-        }).catch(error => {
-          console.error("Error getting AI recommendation:", error);
-          simulateLLMResponse(searchQuery);
-        });
-      } else {
-        simulateLLMResponse(searchQuery);
-      }
-    }, 1500);
-  }
 
   function simulateLLMResponse(query) {
     setIsLoading(false);
+    setIsTyping(false);
     
     setTimeout(() => {
       const responses = {
@@ -448,7 +482,7 @@ function App() {
     return (
       <div className="loading-container">
         <div className="loading-spinner"></div>
-        <p>Loading your farm data...</p>
+        <p>Please wait while we setup your farm data... this will take a few seconds.</p>
       </div>
     );
   }
@@ -539,11 +573,78 @@ function App() {
         
         <div className="card ai-card">
           <h3><i className="ai-icon"></i> AI Recommendation</h3>
-          <div className="ai-response">
-            {aiRecommendation.split('\n').map((line, i) => (
-              <p key={i}>{line}</p>
-            ))}
-          </div>
+          {/* <div className="ai-response markdown-output">
+  <ReactMarkdown
+    children={aiRecommendation}
+    components={{
+      code({ node, inline, className, children, ...props }) {
+        const match = /language-(\w+)/.exec(className || '');
+        return !inline && match ? (
+          <SyntaxHighlighter
+            style={tomorrow}
+            language={match[1]}
+            PreTag="div"
+            {...props}
+          >
+            {String(children).replace(/\n$/, '')}
+          </SyntaxHighlighter>
+        ) : (
+          <code className={className} {...props}>
+            {children}
+          </code>
+        );
+      },
+    }}
+  />
+  </div> */}
+
+
+<div className="ai-response">
+  {isTyping ? (
+    <div className="analyzing-animation">
+      <ReactTypingEffect
+        text={[
+          `Analyzing your query: ${searchQuery}...`,
+          `Processing agricultural data...`,
+          `Consulting farming knowledge base...`,
+          `Generating personalized recommendations...`
+        ]}
+        speed={50}
+        eraseSpeed={30}
+        typingDelay={1000}
+        eraseDelay={2000}
+      />
+      <div className="analysis-dots">
+        <span className="dot"></span>
+        <span className="dot"></span>
+        <span className="dot"></span>
+      </div>
+    </div>
+  ) : (
+    <ReactMarkdown
+      children={aiRecommendation}
+      components={{
+        code({ node, inline, className, children, ...props }) {
+          const match = /language-(\w+)/.exec(className || '');
+          return !inline && match ? (
+            <SyntaxHighlighter
+              style={tomorrow}
+              language={match[1]}
+              PreTag="div"
+              {...props}
+            >
+              {String(children).replace(/\n$/, '')}
+            </SyntaxHighlighter>
+          ) : (
+            <code className={className} {...props}>{children}</code>
+          );
+        },
+      }}
+    />
+  )}
+</div>
+
+
         </div>
         
         <div className="dashboard">
@@ -560,20 +661,64 @@ function App() {
               </div>
             </div>
           </div>
-          
+             
           <div className="card disease-card">
-            <h3><i className="alert-icon"></i> Disease Alerts</h3>
-            {diseaseAlerts?.map((alert, index) => (
-              <div key={index} className={`disease-alert ${alert.risk === 'high' ? 'high-risk' : ''}`}>
-                <div className="alert-header">
-                  <span className="disease-crop-name">{alert.crop}</span>
-                  <span className={`risk-badge ${alert.risk}`}>{alert.risk.toUpperCase()} RISK</span>
-                </div>
-                <p className="disease-crop-name">{alert.disease}</p>
-                <p className="recommendation">{alert.recommendation}</p>
-              </div>
-            ))}
+  <h3><i className="alert-icon"></i> Disease Alerts</h3>
+
+  {userSubscription === 'basic' || userSubscription === 'pro' ? (
+    diseaseAlerts?.map((alert, index) => (
+      <div key={index} className={`disease-alert ${alert.risk === 'high' ? 'high-risk' : ''}`}>
+        <div className="alert-header">
+          <span className="disease-crop-name">{alert.crop}</span>
+          <span className={`risk-badge ${alert.risk}`}>{alert.risk.toUpperCase()} RISK</span>
+        </div>
+        <p className="disease-name">{alert.disease}</p>
+        <p className="recommendation">{alert.recommendation}</p>
+      </div>
+    ))
+  ) : (
+    <>
+      <div className="premium-feature-overlay">
+        <p>Unlock detailed disease alerts with premium subscription</p>
+        <button 
+          className="upgrade-btn"
+          onClick={() => setShowPremiumFeatures(true)}
+        >
+          Upgrade Now
+        </button>
+      </div>
+      <div className="blurred-content">
+        {diseaseAlerts?.slice(0, 1).map((alert, index) => (
+          <div key={index} className="disease-alert">
+            <div className="alert-header">
+              <span className="disease-crop-name">Premium Content</span>
+              <span className="risk-badge">LOCKED</span>
+            </div>
+            <p className="disease-name">Subscribe to view</p>
+            <p className="recommendation">This content requires a premium subscription</p>
           </div>
+        ))}
+      </div>
+    </>
+  )}
+</div>
+
+      {showPremiumFeatures && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <button 
+              className="close-modal-btn" 
+              onClick={() => setShowPremiumFeatures(false)}
+            >
+              ×
+            </button>
+            <PremiumFeatures 
+              onSubscribe={handleSubscribe}
+              userSubscription={userSubscription}
+            />
+          </div>
+        </div>
+      )}
           
           <div className="card market-card">
             <h3><i className="market-icon"></i> Market Prices</h3>

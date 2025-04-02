@@ -18,6 +18,9 @@
   "dependencies": {
     "@dfinity/agent": "^2.4.0",
     "@dfinity/auth-client": "^2.4.0",
-    "react-router-dom": "^7.4.1"
+    "react-markdown": "^10.1.0",
+    "react-router-dom": "^7.4.1",
+    "react-syntax-highlighter": "^15.6.1",
+    "react-typing-effect": "^2.0.5"
   }
 }
