@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { icpblockfarmapp_backend } from '../declarations/icpblockfarmapp_backend';
+import { icpblockfarmapp_backend } from '../../../declarations/icpblockfarmapp_backend';
 import WalletConnect from './WalletConnect';
 
 
@@ -19,19 +19,7 @@ function PremiumFeatures({ onSubscribe, userSubscription }) {
         'Market Price Notifications',
         'Basic Weather Forecast'
       ] 
-    },
-    { 
-      id: 'pro', 
-      name: 'Professional', 
-      price: '5 ICP', 
-      period: 'month', 
-      features: [
-        'All Basic Features',
-        'AI Crop Recommendations',
-        'Advanced Weather Alerts',
-        'Soil Health Analysis'
-      ] 
-    },
+    }
     
   ];
 

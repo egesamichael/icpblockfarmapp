@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Principal } from '@dfinity/principal';
-import { icpblockfarmapp_backend } from '../declarations/icpblockfarmapp_backend';
+import { icpblockfarmapp_backend } from '../../../declarations/icpblockfarmapp_backend';
 
 function WalletConnect({ onWalletConnected }) {
   const [walletAddress, setWalletAddress] = useState('');
@@ -40,9 +40,15 @@ function WalletConnect({ onWalletConnected }) {
       }
       
       // Save wallet to backend
+      const result = await icpblockfarmapp_backend.greet("connection_test");
+      console.log("Backend connection successful:", result);
+      if (result) {
       await icpblockfarmapp_backend.setUserWallet(walletAddress);
       setSavedWallet(walletAddress);
       onWalletConnected(walletAddress);
+      } else {
+        throw new Error('Backend connection failed. Please try again.');
+      }
       
     } catch (err) {
       setError(err.message || 'Failed to connect wallet');

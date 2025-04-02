@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthClient } from "@dfinity/auth-client";
 import { HttpAgent } from "@dfinity/agent";
-import { icpblockfarmapp_backend } from 'declarations/icpblockfarmapp_backend';
+import { icpblockfarmapp_backend } from '../../declarations/icpblockfarmapp_backend';
 import PremiumFeatures from './components/PremiumFeatures';
 import './PremiumFeatures.css';
 import ReactMarkdown from 'react-markdown';
