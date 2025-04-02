@@ -7,6 +7,9 @@ import HashMap "mo:base/HashMap";
 import Principal "mo:base/Principal";
 import Time "mo:base/Time";
 import Iter "mo:base/Iter";
+import Debug "mo:base/Debug";
+import Result "mo:base/Result";
+import Int "mo:base/Int";
 
 actor {
   // Subscription types
@@ -14,11 +17,19 @@ actor {
     plan: Text;
     startTime: Time.Time;
     endTime: Time.Time;
+    transactionId: ?Text; // Optional transaction ID
   };
 
   // Subscription storage
   private stable var subscriptionEntries : [(Principal, Subscription)] = [];
   private var subscriptions = HashMap.HashMap<Principal, Subscription>(0, Principal.equal, Principal.hash);
+  
+  // User wallet storage
+  private stable var walletEntries : [(Principal, Text)] = [];
+  private var userWallets = HashMap.HashMap<Principal, Text>(0, Principal.equal, Principal.hash);
+  
+  // Admin wallet configuration
+  private let ADMIN_WALLET : Text = "rrkah-fqaaa-aaaaa-aaaaq-cai"; // Replace with your admin wallet
 
   let model = #Llama3_1_8B;
  
@@ -142,38 +153,66 @@ actor {
     return formatAIResponse(response);
   };
 
-  // Initialize subscriptions from stable storage
-  system func preupgrade() {
-    subscriptionEntries := Iter.toArray(subscriptions.entries());
+  // Wallet management methods
+  public shared(msg) func setUserWallet(walletAddress : Text) : async Bool {
+    let caller = msg.caller;
+    userWallets.put(caller, walletAddress);
+    return true;
   };
 
-  system func postupgrade() {
-    subscriptions := HashMap.fromIter<Principal, Subscription>(subscriptionEntries.vals(), 10, Principal.equal, Principal.hash);
-    subscriptionEntries := [];
+  public shared(msg) func getUserWallet() : async ?Text {
+    let caller = msg.caller;
+    return userWallets.get(caller);
+  };
+
+  public shared(msg) func clearUserWallet() : async Bool {
+    let caller = msg.caller;
+    userWallets.delete(caller);
+    return true;
   };
 
   // Subscription methods
-  public shared(msg) func processSubscription(planId : Text) : async {success : Bool; message : Text} {
+  public shared(msg) func processSubscription(planId : Text) : async {success : Bool; message : Text; transactionId : ?Text} {
     let caller = msg.caller;
     
-    // In a real implementation, you would:
-    // 1. Process ICP token transfer
-    // 2. Verify the payment was successful
-    // 3. Then update the subscription
-    
-    // For demo purposes, we'll just update the subscription
-    let now = Time.now();
-    let oneMonth = 30 * 24 * 60 * 60 * 1000000000; // 30 days in nanoseconds
-    
-    let subscription : Subscription = {
-      plan = planId;
-      startTime = now;
-      endTime = now + oneMonth;
+    // Check if user has connected a wallet
+    switch (userWallets.get(caller)) {
+      case (null) {
+        return {
+          success = false; 
+          message = "No wallet connected. Please connect your wallet first.";
+          transactionId = null;
+        };
+      };
+      case (?userWallet) {
+        // In a real implementation, you would:
+        // 1. Process ICP token transfer using the Ledger canister
+        // 2. Verify the payment was successful
+        // 3. Then update the subscription
+        
+        // For playground purposes, we'll simulate a transaction
+        let transactionId = Principal.toText(caller) # "-" # Int.toText(Time.now());
+        
+        // Update subscription
+        let now = Time.now();
+        let oneMonth = 30 * 24 * 60 * 60 * 1000000000; // 30 days in nanoseconds
+        
+        let subscription : Subscription = {
+          plan = planId;
+          startTime = now;
+          endTime = now + oneMonth;
+          transactionId = ?transactionId;
+        };
+        
+        subscriptions.put(caller, subscription);
+        
+        return {
+          success = true; 
+          message = "Subscription activated successfully!";
+          transactionId = ?transactionId;
+        };
+      };
     };
-    
-    subscriptions.put(caller, subscription);
-    
-    return {success = true; message = "Subscription activated successfully"};
   };
 
   public shared(msg) func getUserSubscription() : async ?Text {
@@ -191,5 +230,19 @@ actor {
       };
     };
   };
-};
+  
+  // Initialize storage from stable variables
+  system func preupgrade() {
+    subscriptionEntries := Iter.toArray(subscriptions.entries());
+    walletEntries := Iter.toArray(userWallets.entries());
+  };
+
+  system func postupgrade() {
+    subscriptions := HashMap.fromIter<Principal, Subscription>(subscriptionEntries.vals(), 10, Principal.equal, Principal.hash);
+    subscriptionEntries := [];
+    
+    userWallets := HashMap.fromIter<Principal, Text>(walletEntries.vals(), 10, Principal.equal, Principal.hash);
+    walletEntries := [];
+  };
+}
 

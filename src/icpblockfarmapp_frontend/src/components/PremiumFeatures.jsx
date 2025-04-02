@@ -1,9 +1,12 @@
 import React, { useState } from 'react';
-import { icpblockfarmapp_backend } from 'declarations/icpblockfarmapp_backend';
+import { icpblockfarmapp_backend } from '../declarations/icpblockfarmapp_backend';
+import WalletConnect from './WalletConnect';
+
 
 function PremiumFeatures({ onSubscribe, userSubscription }) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [transactionError, setTransactionError] = useState('');
+  const [connectedWallet, setConnectedWallet] = useState(null);
   
   const subscriptionPlans = [
     { 
@@ -33,6 +36,11 @@ function PremiumFeatures({ onSubscribe, userSubscription }) {
   ];
 
   const handleSubscribe = async (planId) => {
+    if (!connectedWallet) {
+      setTransactionError('Please connect your wallet first to subscribe.');
+      return;
+    }
+    
     setIsProcessing(true);
     setTransactionError('');
     
@@ -52,6 +60,11 @@ function PremiumFeatures({ onSubscribe, userSubscription }) {
     }
   };
 
+  const handleWalletConnected = (walletAddress) => {
+    setConnectedWallet(walletAddress);
+    setTransactionError(''); // Clear any previous errors when wallet is connected
+  };
+
   return (
     <div className="premium-features">
       <h2>Premium Features</h2>
@@ -59,6 +72,11 @@ function PremiumFeatures({ onSubscribe, userSubscription }) {
         Upgrade your farming experience with premium features powered by ICP tokens.
         Manage your subscription directly on the blockchain for full transparency.
       </p>
+      
+      {/* Wallet Connection Section */}
+      <div className="wallet-section">
+        <WalletConnect onWalletConnected={handleWalletConnected} />
+      </div>
       
       {transactionError && (
         <div className="transaction-error">
@@ -90,7 +108,8 @@ function PremiumFeatures({ onSubscribe, userSubscription }) {
               <button 
                 className="subscribe-btn" 
                 onClick={() => handleSubscribe(plan.id)}
-                disabled={isProcessing}
+                disabled={isProcessing || !connectedWallet}
+                title={!connectedWallet ? "Connect wallet first" : ""}
               >
                 {isProcessing ? (
                   <>

@@ -11,6 +11,7 @@ import { tomorrow } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import ReactTypingEffect from 'react-typing-effect';
 
 
+
 function App() {
   const navigate = useNavigate();
   const [authClient, setAuthClient] = useState(null);
@@ -34,6 +35,7 @@ function App() {
   const [connectionStatus, setConnectionStatus] = useState('checking');
   const [backendAvailable, setBackendAvailable] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
+  const [wallet, setWallet] = useState(null);
   
   // Initialize auth client
   useEffect(() => {
